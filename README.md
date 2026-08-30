@@ -14,17 +14,23 @@ and stores every receipt in a shared Postgres database via Prisma.
 ## Deploy on Vercel
 
 1. **Add a Postgres database.** In your Vercel project → Storage tab → Create
-   Database → Postgres (or Neon). This automatically sets the `DATABASE_URL`
-   environment variable for you.
-2. **Push schema to the database.** Locally (or via Vercel's deploy hook),
+   Database → Postgres (or Neon). This automatically sets a database URL
+   environment variable — note the exact name it uses (Vercel often prefixes
+   it, e.g. `database_DATABASE_URL`) and also add a plain `DATABASE_URL`
+   variable with the same value, since `schema.prisma` reads that exact name.
+2. **Set a shared access PIN.** Add an environment variable `ACCESS_PIN` with
+   whatever PIN you want your team to use to unlock the app. Every page and
+   API route is gated behind it via `middleware.js`.
+3. **Push schema to the database.** Locally (or via Vercel's deploy hook),
    run:
    ```bash
    npx prisma db push
    ```
-3. **Deploy.** Vercel auto-detects Next.js — just import this repo as a
+4. **Deploy.** Vercel auto-detects Next.js — just import this repo as a
    project and click Deploy. `postinstall` runs `prisma generate`
    automatically.
-4. Visit your deployment URL — it redirects `/` to `/app.html`.
+5. Visit your deployment URL — it'll prompt for the PIN, then redirect to
+   `/app.html`.
 
 ## Local development
 
