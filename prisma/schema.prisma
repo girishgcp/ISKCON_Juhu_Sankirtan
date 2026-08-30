@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Receipt {
+  id         String   @id @default(cuid())
+  receiptNo  String   @unique
+  date       String
+  from       String
+  issuedBy   String?
+  amount     Float
+  purpose    String?
+  mode       String
+  billNo     String?
+  chequeNo   String?
+  bank       String?
+  branch     String?
+  chequeDate String?
+  savedAt    DateTime @default(now())
+}
+
+model Counter {
+  id   String @id @default("singleton")
+  next Int    @default(43480)
+}

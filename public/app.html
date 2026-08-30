@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISKCON Receipt Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Tiro+Devanagari+Hindi&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --maroon:#7A1F2B;
+    --maroon-deep:#5A1620;
+    --gold:#B8863B;
+    --ink:#2B2420;
+    --paper-customer:#F3DCE3;
+    --paper-account:#DCE3EE;
+    --paper-book:#E7E2D8;
+    --canvas:#EFEAE0;
+    --line:#B8AFA0;
+    --panel:#FFFFFF;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--canvas);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    max-width:1180px;
+    margin:0 auto;
+    padding:28px 20px 60px;
+  }
+  .topbar{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .topbar h1{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:700;
+    font-size:30px;
+    color:var(--maroon-deep);
+    margin:0;
+    letter-spacing:0.2px;
+  }
+  .topbar .sub{
+    font-size:13px;
+    color:#7a7264;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:380px 1fr;
+    gap:24px;
+    align-items:start;
+  }
+  @media (max-width:860px){ .grid{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--panel);
+    border:1px solid #E4DFD4;
+    border-radius:10px;
+    padding:20px;
+  }
+  .card h2{
+    font-family:'Cormorant Garamond',serif;
+    font-size:19px;
+    color:var(--maroon-deep);
+    margin:0 0 14px;
+    padding-bottom:8px;
+    border-bottom:1px solid #EEE7D9;
+  }
+  label{
+    display:block;
+    font-size:11.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+    color:#8a8172;
+    margin:14px 0 5px;
+  }
+  label:first-of-type{margin-top:0;}
+  input[type=text], input[type=number], input[type=date], select{
+    width:100%;
+    padding:9px 10px;
+    border:1px solid #D8D2C4;
+    border-radius:6px;
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    color:var(--ink);
+    background:#FCFAF5;
+  }
+  input:focus, select:focus{
+    outline:2px solid var(--gold);
+    outline-offset:1px;
+  }
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .amt-words{
+    font-size:12px;
+    color:var(--maroon);
+    margin-top:5px;
+    font-style:italic;
+    min-height:15px;
+  }
+  .modes{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:2px;
+  }
+  .mode-btn{
+    padding:7px 12px;
+    border-radius:20px;
+    border:1px solid #D8D2C4;
+    background:#FCFAF5;
+    font-size:12.5px;
+    cursor:pointer;
+    color:#6b6459;
+  }
+  .mode-btn.active{
+    background:var(--maroon);
+    border-color:var(--maroon);
+    color:#fff;
+  }
+  .conditional{
+    border-left:2px solid #EEE7D9;
+    padding-left:12px;
+    margin-top:10px;
+  }
+  .hidden{display:none !important;}
+  .copystyle{
+    display:flex;
+    gap:8px;
+  }
+  .swatch{
+    flex:1;
+    padding:8px 6px;
+    border-radius:6px;
+    border:1px solid #D8D2C4;
+    text-align:center;
+    font-size:11.5px;
+    cursor:pointer;
+    color:#6b6459;
+  }
+  .swatch.active{border-color:var(--maroon);color:var(--maroon-deep);font-weight:600;box-shadow:inset 0 0 0 1px var(--maroon);}
+  .actions{
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+    margin-top:18px;
+  }
+  button.primary, button.secondary, button.ghost{
+    padding:11px 14px;
+    border-radius:7px;
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+    border:none;
+  }
+  button.primary{background:var(--maroon);color:#fff;}
+  button.primary:hover{background:var(--maroon-deep);}
+  button.secondary{background:#F3EDE0;color:var(--maroon-deep);border:1px solid #E4D9C0;}
+  button.secondary:hover{background:#ECE3D0;}
+  button.ghost{background:transparent;color:#8a8172;text-decoration:underline;padding:4px;font-weight:500;}
+  .status{font-size:12px;color:#8a8172;min-height:16px;margin-top:6px;}
+
+  /* Receipt preview */
+  .preview-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;}
+  #receipt, .receipt-card{
+    width:640px;
+    max-width:100%;
+    background:var(--paper-customer);
+    border:1px solid #00000014;
+    border-radius:4px;
+    padding:26px 30px 22px;
+    position:relative;
+    font-family:'Inter',sans-serif;
+    box-shadow:0 6px 22px -8px rgba(90,22,32,0.25);
+  }
+  .ribbon{
+    position:absolute;
+    top:14px;
+    right:-2px;
+    background:var(--ink);
+    color:#fff;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:0.5px;
+    padding:4px 12px 4px 16px;
+    border-radius:3px 0 0 3px;
+  }
+  .rhead{
+    display:flex;
+    gap:14px;
+    align-items:flex-start;
+    border-bottom:2px solid var(--maroon);
+    padding-bottom:10px;
+  }
+  .lotus{width:46px;height:46px;flex:none;}
+  .rhead-text .org{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:700;
+    font-size:19px;
+    color:var(--maroon-deep);
+    line-height:1.15;
+  }
+  .rhead-text .meta{font-size:10.3px;color:#4a453c;line-height:1.5;margin-top:3px;}
+  .rhead-text .meta b{color:var(--ink);}
+  .rno-row{
+    display:flex;
+    justify-content:space-between;
+    margin-top:12px;
+    font-size:13px;
+  }
+  .rno-row .no{font-weight:700;color:var(--maroon-deep);}
+  .field{margin-top:13px;font-size:13.5px;}
+  .field .fl{color:#6b6459;font-size:11px;text-transform:uppercase;letter-spacing:0.3px;}
+  .field .fv{
+    border-bottom:1px solid var(--line);
+    padding:3px 2px 5px;
+    min-height:18px;
+    font-weight:500;
+  }
+  .amt-row{display:flex;gap:16px;align-items:flex-end;margin-top:13px;}
+  .amt-row .field{flex:1;margin-top:0;}
+  .rsbox{
+    border:1.5px solid var(--ink);
+    border-radius:4px;
+    padding:6px 10px;
+    font-weight:700;
+    font-size:16px;
+    min-width:110px;
+    text-align:right;
+  }
+  .paymode{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12.5px;}
+  .paymode .opt{display:flex;align-items:center;gap:5px;}
+  .box{width:12px;height:12px;border:1.4px solid var(--ink);display:inline-block;border-radius:2px;position:relative;}
+  .box.on::after{content:'✓';position:absolute;left:1px;top:-4px;font-size:11px;font-weight:700;}
+  .subfields{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;margin-top:10px;}
+  .footer{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    margin-top:20px;
+    padding-top:12px;
+    border-top:1px dashed var(--line);
+  }
+  .footer .fs{font-size:11.5px;color:#5a5548;}
+  .footer .forlogo{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:700;
+    font-size:15px;
+    color:var(--maroon-deep);
+    text-align:right;
+  }
+  .mantra{
+    text-align:center;
+    font-family:'Tiro Devanagari Hindi',serif;
+    font-size:11.5px;
+    color:var(--maroon);
+    margin-top:14px;
+    letter-spacing:0.3px;
+  }
+  .history{width:640px;max-width:100%;}
+  .hist-item{
+    display:flex;
+    justify-content:space-between;
+    padding:8px 10px;
+    border-bottom:1px solid #EEE7D9;
+    font-size:12.5px;
+    cursor:pointer;
+  }
+  .hist-item:hover{background:#FBF7EE;}
+  .hist-item .hno{font-weight:700;color:var(--maroon-deep);}
+  .hist-item .hmeta{color:#8a8172;}
+
+  #printArea{display:none;}
+  @media print{
+    body.printing > .app{display:none !important;}
+    body.printing #printArea{
+      display:block;
+      background:#fff;
+    }
+    #printArea .print-copy{
+      page-break-inside:avoid;
+      margin:0 0 8mm 0;
+    }
+    #printArea .print-copy:last-child{margin-bottom:0;}
+    #printArea .receipt-card{
+      width:100% !important;
+      max-width:100% !important;
+      box-shadow:none !important;
+      border:1px solid #0000002a !important;
+    }
+    @page{ size:A4 portrait; margin:8mm; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <h1>ISKCON Receipt Generator</h1>
+    <span class="sub">Hare Krishna Land, Juhu · digital version of the Book Distribution receipt book</span>
+  </div>
+
+  <div class="grid">
+    <!-- FORM -->
+    <div class="card">
+      <h2>Receipt details</h2>
+
+      <label>Receipt no.</label>
+      <div class="row2">
+        <input type="text" id="receiptNo" placeholder="e.g. 43480">
+        <button type="button" class="secondary" onclick="loadNextNumber()" style="padding:9px;">Next in sequence</button>
+      </div>
+
+      <label>Date</label>
+      <input type="date" id="rDate">
+
+      <label>Received with thanks from M/s</label>
+      <input type="text" id="fromName" placeholder="Donor / devotee name" list="fromNameOptions" autocomplete="off">
+      <datalist id="fromNameOptions"></datalist>
+
+      <label>Issued by (For ISKCON)</label>
+      <input type="text" id="issuedBy" placeholder="Devotee generating this receipt" list="issuedByOptions" autocomplete="off">
+      <datalist id="issuedByOptions"></datalist>
+
+      <label>Amount</label>
+      <div class="row2">
+        <input type="number" id="amount" placeholder="0" oninput="updateAmountWords()">
+        <select id="purpose" onchange="renderPreview()">
+          <option value="">Purpose (optional)</option>
+          <option>Book Donation</option>
+          <option>Regular Donation</option>
+          <option>Life Membership</option>
+          <option>Nitya Seva</option>
+          <option>Festival Sponsorship</option>
+          <option>Others</option>
+        </select>
+      </div>
+      <div class="amt-words" id="amtWords"></div>
+
+      <label>Payment mode</label>
+      <div class="modes" id="modeButtons">
+        <div class="mode-btn active" data-mode="Cash" onclick="setMode('Cash')">Cash</div>
+        <div class="mode-btn" data-mode="Cheque" onclick="setMode('Cheque')">Cheque</div>
+        <div class="mode-btn" data-mode="NEFT/RTGS" onclick="setMode('NEFT/RTGS')">NEFT/RTGS</div>
+        <div class="mode-btn" data-mode="Swiping Machine" onclick="setMode('Swiping Machine')">Card</div>
+        <div class="mode-btn" data-mode="Others" onclick="setMode('Others')">Others</div>
+      </div>
+
+      <label>Against Bill of Supply No.</label>
+      <input type="text" id="billNo" placeholder="Optional">
+
+      <div class="conditional hidden" id="chequeFields">
+        <label>Cheque / transaction no.</label>
+        <input type="text" id="chequeNo">
+        <label>Drawn on bank</label>
+        <input type="text" id="bankName">
+        <div class="row2">
+          <div>
+            <label>Branch</label>
+            <input type="text" id="branch">
+          </div>
+          <div>
+            <label>Instrument date</label>
+            <input type="date" id="chequeDate">
+          </div>
+        </div>
+      </div>
+
+      <label>Copy style</label>
+      <div class="copystyle">
+        <div class="swatch active" data-copy="Customer Copy" data-color="#F3DCE3" onclick="setCopyType(this)">Customer</div>
+        <div class="swatch" data-copy="Account Copy" data-color="#DCE3EE" onclick="setCopyType(this)">Account</div>
+        <div class="swatch" data-copy="Book Copy" data-color="#E7E2D8" onclick="setCopyType(this)">Book</div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" onclick="downloadPDF()">Download PDF</button>
+        <button class="secondary" onclick="printAllCopies()">Print all 3 copies (1 A4 sheet)</button>
+        <button class="secondary" onclick="downloadImage()">Download image (for WhatsApp)</button>
+        <button class="secondary" onclick="saveReceipt()">Save to history</button>
+        <button class="ghost" onclick="resetForm()">Clear form</button>
+      </div>
+      <div class="status" id="statusMsg"></div>
+    </div>
+
+    <!-- PREVIEW -->
+    <div class="preview-wrap">
+      <div id="receipt" class="receipt-card">
+        <div class="ribbon" id="ribbonLabel">Customer Copy</div>
+        <div class="rhead">
+          <svg class="lotus" viewBox="0 0 100 100">
+            <g fill="none" stroke="#7A1F2B" stroke-width="2.2">
+              <path d="M50 55 C40 40 30 25 50 8 C70 25 60 40 50 55 Z"/>
+              <path d="M50 55 C33 48 15 42 12 22 C34 20 44 34 50 55 Z"/>
+              <path d="M50 55 C67 48 85 42 88 22 C66 20 56 34 50 55 Z"/>
+              <path d="M50 55 C42 65 30 72 10 68 C18 50 34 48 50 55 Z"/>
+              <path d="M50 55 C58 65 70 72 90 68 C82 50 66 48 50 55 Z"/>
+              <circle cx="50" cy="58" r="6" fill="#7A1F2B" stroke="none"/>
+            </g>
+          </svg>
+          <div class="rhead-text">
+            <div class="org">International Society for Krishna Consciousness (ISKCON)</div>
+            <div class="meta">
+              Founder Acharya: <b>His Divine Grace A.C. Bhaktivedanta Swami Prabhupada</b><br>
+              Iskcon Book Distribution, Hare Krishna Land, Juhu, Mumbai – 400 049. Mob: 91+91369 02815<br>
+              Tel.: (022) 2620 4799 (D) 2620 6860 (Ext. 633) · iskcon.book.distribution@gmail.com · PAN: AAAT10017P
+            </div>
+          </div>
+        </div>
+
+        <div class="rno-row">
+          <div>Receipt No. <span class="no" id="pvNo">—</span></div>
+          <div>Date: <span id="pvDate">—</span></div>
+        </div>
+
+        <div class="field">
+          <div class="fl">Received with thanks from M/s</div>
+          <div class="fv" id="pvFrom">&nbsp;</div>
+        </div>
+
+        <div class="amt-row">
+          <div class="field">
+            <div class="fl">The sum of Rupees</div>
+            <div class="fv" id="pvWords">&nbsp;</div>
+          </div>
+          <div class="rsbox">₹ <span id="pvAmt">0</span></div>
+        </div>
+
+        <div class="paymode">
+          <span class="opt"><span class="box" id="boxCash"></span> Cash</span>
+          <span class="opt"><span class="box" id="boxCheque"></span> Cheque</span>
+          <span class="opt"><span class="box" id="boxNeft"></span> NEFT/RTGS</span>
+          <span class="opt"><span class="box" id="boxSwipe"></span> Swiping Machine</span>
+          <span class="opt"><span class="box" id="boxOthers"></span> Others</span>
+        </div>
+
+        <div class="subfields">
+          <div class="field" style="margin-top:8px;"><div class="fl">Against Bill of Supply No.</div><div class="fv" id="pvBill">&nbsp;</div></div>
+          <div class="field" style="margin-top:8px;" id="pvPurposeWrap"><div class="fl">Purpose</div><div class="fv" id="pvPurpose">&nbsp;</div></div>
+          <div class="field" style="margin-top:2px;" id="pvChequeNoWrap"><div class="fl">Cheque No.</div><div class="fv" id="pvChequeNo">&nbsp;</div></div>
+          <div class="field" style="margin-top:2px;" id="pvBankWrap"><div class="fl">Drawn on Bank</div><div class="fv" id="pvBank">&nbsp;</div></div>
+          <div class="field" style="margin-top:2px;" id="pvBranchWrap"><div class="fl">Branch</div><div class="fv" id="pvBranch">&nbsp;</div></div>
+          <div class="field" style="margin-top:2px;" id="pvCDateWrap"><div class="fl">Date</div><div class="fv" id="pvCDate">&nbsp;</div></div>
+        </div>
+
+        <div class="footer">
+          <div class="fs">Yours in the service of Lord Shri Krishna</div>
+          <div class="forlogo">For ISKCON<br><span id="pvIssuedBy" style="font-family:'Inter',sans-serif;font-weight:500;font-size:11.5px;color:#5a5548;">&nbsp;</span></div>
+        </div>
+        <div class="mantra">हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे । हरे राम हरे राम राम राम हरे हरे ॥</div>
+      </div>
+
+      <div class="card history">
+        <h2>Recent receipts <span style="font-weight:400;font-size:11px;color:#8a8172;">(shared across devotees using this tool)</span></h2>
+        <div id="historyList" style="font-size:12.5px;color:#8a8172;">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="printArea"></div>
+
+<script>
+let currentMode = 'Cash';
+
+function setMode(m){
+  currentMode = m;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active', b.dataset.mode===m));
+  document.getElementById('chequeFields').classList.toggle('hidden', !['Cheque','NEFT/RTGS','Others'].includes(m));
+  renderPreview();
+}
+
+function setCopyType(el){
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('receipt').style.background = el.dataset.color;
+  document.getElementById('ribbonLabel').textContent = el.dataset.copy;
+}
+
+const ones=['','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+const tens=['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+function twoDigits(n){
+  if(n<20) return ones[n];
+  return tens[Math.floor(n/10)] + (n%10? '-'+ones[n%10]:'');
+}
+function threeDigits(n){
+  let s='';
+  if(n>=100){ s+=ones[Math.floor(n/100)]+' hundred'; n=n%100; if(n) s+=' '; }
+  if(n) s+=twoDigits(n);
+  return s;
+}
+function numberToWords(num){
+  num = Math.round(num);
+  if(num===0) return 'Zero';
+  let crore=Math.floor(num/10000000); num%=10000000;
+  let lakh=Math.floor(num/100000); num%=100000;
+  let thousand=Math.floor(num/1000); num%=1000;
+  let rest=num;
+  let parts=[];
+  if(crore) parts.push(threeDigits(crore)+' crore');
+  if(lakh) parts.push(threeDigits(lakh)+' lakh');
+  if(thousand) parts.push(threeDigits(thousand)+' thousand');
+  if(rest) parts.push(threeDigits(rest));
+  let words = parts.join(' ');
+  return words.charAt(0).toUpperCase()+words.slice(1)+' rupees only';
+}
+
+function updateAmountWords(){
+  const amt = parseFloat(document.getElementById('amount').value)||0;
+  document.getElementById('amtWords').textContent = amt>0 ? numberToWords(amt) : '';
+  renderPreview();
+}
+
+function formatDate(iso){
+  if(!iso) return '—';
+  const d=new Date(iso+'T00:00:00');
+  return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+function renderPreview(){
+  const no=document.getElementById('receiptNo').value.trim();
+  const date=document.getElementById('rDate').value;
+  const from=document.getElementById('fromName').value.trim();
+  const issuedBy=document.getElementById('issuedBy').value.trim();
+  const amt=parseFloat(document.getElementById('amount').value)||0;
+  const purpose=document.getElementById('purpose').value;
+  const bill=document.getElementById('billNo').value.trim();
+  const cheque=document.getElementById('chequeNo').value.trim();
+  const bank=document.getElementById('bankName').value.trim();
+  const branch=document.getElementById('branch').value.trim();
+  const cdate=document.getElementById('chequeDate').value;
+
+  document.getElementById('pvNo').textContent = no || '—';
+  document.getElementById('pvDate').textContent = formatDate(date);
+  document.getElementById('pvFrom').textContent = from || '\u00A0';
+  document.getElementById('pvIssuedBy').textContent = issuedBy || '\u00A0';
+  document.getElementById('pvWords').textContent = amt>0 ? numberToWords(amt) : '\u00A0';
+  document.getElementById('pvAmt').textContent = amt ? amt.toLocaleString('en-IN') : '0';
+  document.getElementById('pvBill').textContent = bill || '\u00A0';
+  document.getElementById('pvChequeNo').textContent = cheque || '\u00A0';
+  document.getElementById('pvBank').textContent = bank || '\u00A0';
+  document.getElementById('pvBranch').textContent = branch || '\u00A0';
+  document.getElementById('pvCDate').textContent = cdate ? formatDate(cdate) : '\u00A0';
+  document.getElementById('pvPurpose').textContent = purpose || '\u00A0';
+
+  ['boxCash','boxCheque','boxNeft','boxSwipe','boxOthers'].forEach(id=>document.getElementById(id).classList.remove('on'));
+  const map={'Cash':'boxCash','Cheque':'boxCheque','NEFT/RTGS':'boxNeft','Swiping Machine':'boxSwipe','Others':'boxOthers'};
+  document.getElementById(map[currentMode]).classList.add('on');
+
+  const showCheque = ['Cheque','NEFT/RTGS','Others'].includes(currentMode);
+  ['pvChequeNoWrap','pvBankWrap','pvBranchWrap','pvCDateWrap'].forEach(id=>{
+    document.getElementById(id).style.display = showCheque ? '' : 'none';
+  });
+}
+
+function collectData(){
+  return {
+    receiptNo: document.getElementById('receiptNo').value.trim(),
+    date: document.getElementById('rDate').value,
+    from: document.getElementById('fromName').value.trim(),
+    issuedBy: document.getElementById('issuedBy').value.trim(),
+    amount: parseFloat(document.getElementById('amount').value)||0,
+    purpose: document.getElementById('purpose').value,
+    mode: currentMode,
+    billNo: document.getElementById('billNo').value.trim(),
+    chequeNo: document.getElementById('chequeNo').value.trim(),
+    bank: document.getElementById('bankName').value.trim(),
+    branch: document.getElementById('branch').value.trim(),
+    chequeDate: document.getElementById('chequeDate').value,
+    savedAt: new Date().toISOString()
+  };
+}
+
+// ---------- Prisma-backed API storage ----------
+// Expects two serverless endpoints on the same domain:
+//   GET  /api/counter        -> { next: number }
+//   PUT  /api/counter        -> body { next }               -> updates counter
+//   GET  /api/receipts       -> [ { receiptNo, date, from, issuedBy, amount, purpose, mode, billNo, chequeNo, bank, branch, chequeDate, savedAt }, ... ]
+//   POST /api/receipts       -> body = one receipt object    -> creates it
+
+async function loadNextNumber(){
+  try{
+    const res = await fetch('/api/counter');
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    document.getElementById('receiptNo').value = data.next || 43480;
+  }catch(e){
+    setStatus('Could not fetch next number: '+e.message);
+    document.getElementById('receiptNo').value = 43480;
+  }
+  renderPreview();
+}
+
+async function saveReceipt(){
+  const data = collectData();
+  if(!data.receiptNo){ setStatus('Enter a receipt number before saving.'); return; }
+  setStatus('Saving…');
+  try{
+    const res = await fetch('/api/receipts', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(data)
+    });
+    if(!res.ok){
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.message || ('HTTP '+res.status));
+    }
+    const nextNo = (parseInt(data.receiptNo)||0) + 1;
+    await fetch('/api/counter', {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({next: nextNo})
+    });
+    setStatus('Saved receipt #'+data.receiptNo+'.');
+    await loadHistory();
+  }catch(e){
+    setStatus('Save failed: '+e.message);
+  }
+}
+
+async function loadHistory(){
+  const el = document.getElementById('historyList');
+  el.innerHTML = 'Loading…';
+  try{
+    const res = await fetch('/api/receipts');
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const allItems = await res.json();
+    if(!Array.isArray(allItems) || allItems.length===0){
+      el.innerHTML = 'No receipts saved yet.';
+      populateNameSuggestions([]);
+      return;
+    }
+    allItems.sort((a,b)=> (b.receiptNo+'').localeCompare(a.receiptNo+'', undefined, {numeric:true}));
+    populateNameSuggestions(allItems);
+    const recent = allItems.slice(0,10);
+    el.innerHTML = recent.map(it=>`
+      <div class="hist-item" onclick='loadReceipt(${JSON.stringify(JSON.stringify(it))})'>
+        <span class="hno">#${it.receiptNo}</span>
+        <span>${it.from||'—'}</span>
+        <span class="hmeta">₹${(it.amount||0).toLocaleString('en-IN')}</span>
+      </div>`).join('');
+  }catch(e){
+    el.innerHTML = 'History unavailable right now.';
+  }
+}
+
+function populateNameSuggestions(items){
+  const fromNames = [...new Set(items.map(it=>it.from).filter(Boolean))].sort();
+  const issuerNames = [...new Set(items.map(it=>it.issuedBy).filter(Boolean))].sort();
+  document.getElementById('fromNameOptions').innerHTML = fromNames.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join('');
+  document.getElementById('issuedByOptions').innerHTML = issuerNames.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join('');
+}
+
+function loadReceipt(jsonStr){
+  const it = JSON.parse(jsonStr);
+  document.getElementById('receiptNo').value = it.receiptNo||'';
+  document.getElementById('rDate').value = it.date||'';
+  document.getElementById('fromName').value = it.from||'';
+  document.getElementById('issuedBy').value = it.issuedBy||'';
+  document.getElementById('amount').value = it.amount||'';
+  document.getElementById('purpose').value = it.purpose||'';
+  document.getElementById('billNo').value = it.billNo||'';
+  document.getElementById('chequeNo').value = it.chequeNo||'';
+  document.getElementById('bankName').value = it.bank||'';
+  document.getElementById('branch').value = it.branch||'';
+  document.getElementById('chequeDate').value = it.chequeDate||'';
+  setMode(it.mode||'Cash');
+  updateAmountWords();
+  setStatus('Loaded receipt #'+it.receiptNo+' for editing/reprint.');
+}
+
+function resetForm(){
+  ['receiptNo','fromName','issuedBy','amount','billNo','chequeNo','bankName','branch'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('rDate').value='';
+  document.getElementById('chequeDate').value='';
+  document.getElementById('purpose').value='';
+  setMode('Cash');
+  updateAmountWords();
+  setStatus('');
+}
+
+function setStatus(msg){ document.getElementById('statusMsg').textContent = msg; }
+
+async function downloadPDF(){
+  setStatus('Preparing PDF…');
+  const node = document.getElementById('receipt');
+  const canvas = await html2canvas(node, {scale:3, backgroundColor:null});
+  const img = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({orientation:'portrait', unit:'pt', format:'a4'});
+  const pageW = pdf.internal.pageSize.getWidth();
+  const ratio = canvas.height/canvas.width;
+  const w = pageW - 60;
+  const h = w*ratio;
+  pdf.addImage(img, 'PNG', 30, 40, w, h);
+  const no = document.getElementById('receiptNo').value || 'draft';
+  pdf.save('ISKCON-receipt-'+no+'.pdf');
+  setStatus('PDF downloaded.');
+}
+
+async function downloadImage(){
+  setStatus('Preparing image…');
+  const node = document.getElementById('receipt');
+  const canvas = await html2canvas(node, {scale:3, backgroundColor:null});
+  const link = document.createElement('a');
+  const no = document.getElementById('receiptNo').value || 'draft';
+  link.download = 'ISKCON-receipt-'+no+'.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  setStatus('Image downloaded — ready to share on WhatsApp.');
+}
+
+function buildCopy(labelText, bgColor){
+  const clone = document.getElementById('receipt').cloneNode(true);
+  clone.removeAttribute('id');
+  clone.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+  clone.style.background = bgColor;
+  const ribbon = clone.querySelector('.ribbon');
+  if(ribbon) ribbon.textContent = labelText;
+  return clone;
+}
+
+function printAllCopies(){
+  const no = document.getElementById('receiptNo').value.trim();
+  if(!no){ setStatus('Enter a receipt number before printing.'); return; }
+  const area = document.getElementById('printArea');
+  area.innerHTML = '';
+  const copies = [
+    {label:'Customer Copy', color:'#F3DCE3'},
+    {label:'Account Copy', color:'#DCE3EE'},
+    {label:'Book Copy', color:'#E7E2D8'}
+  ];
+  copies.forEach(c=>{
+    const wrap = document.createElement('div');
+    wrap.className = 'print-copy';
+    wrap.appendChild(buildCopy(c.label, c.color));
+    area.appendChild(wrap);
+  });
+  document.body.classList.add('printing');
+  setTimeout(()=>{ window.print(); }, 60);
+}
+
+window.addEventListener('afterprint', ()=>{
+  document.body.classList.remove('printing');
+});
+
+// init
+document.getElementById('rDate').value = new Date().toISOString().slice(0,10);
+document.querySelectorAll('#receiptNo, #fromName, #issuedBy, #billNo, #chequeNo, #bankName, #branch, #rDate, #chequeDate').forEach(el=>{
+  el.addEventListener('input', renderPreview);
+});
+renderPreview();
+loadNextNumber();
+loadHistory();
+</script>
+</body>
+</html>
