@@ -26,13 +26,14 @@ export async function POST(req) {
         from: data.from || '',
         issuedBy: data.issuedBy || null,
         amount: data.amount || 0,
-        purpose: data.purpose || null,
         mode: data.mode || 'Cash',
         billNo: data.billNo || null,
         chequeNo: data.chequeNo || null,
         bank: data.bank || null,
         branch: data.branch || null,
-        chequeDate: data.chequeDate || null
+        chequeDate: data.chequeDate || null,
+        confirmedByAccounts: !!data.confirmedByAccounts,
+        confirmedByName: data.confirmedByName || null
       },
       create: {
         receiptNo: String(data.receiptNo),
@@ -40,13 +41,14 @@ export async function POST(req) {
         from: data.from || '',
         issuedBy: data.issuedBy || null,
         amount: data.amount || 0,
-        purpose: data.purpose || null,
         mode: data.mode || 'Cash',
         billNo: data.billNo || null,
         chequeNo: data.chequeNo || null,
         bank: data.bank || null,
         branch: data.branch || null,
-        chequeDate: data.chequeDate || null
+        chequeDate: data.chequeDate || null,
+        confirmedByAccounts: !!data.confirmedByAccounts,
+        confirmedByName: data.confirmedByName || null
       }
     });
     return Response.json(receipt);

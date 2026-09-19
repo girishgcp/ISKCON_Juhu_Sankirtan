@@ -8,20 +8,21 @@ datasource db {
 }
 
 model Receipt {
-  id         String   @id @default(cuid())
-  receiptNo  String   @unique
-  date       String
-  from       String
-  issuedBy   String?
-  amount     Float
-  purpose    String?
-  mode       String
-  billNo     String?
-  chequeNo   String?
-  bank       String?
-  branch     String?
-  chequeDate String?
-  savedAt    DateTime @default(now())
+  id                 String   @id @default(cuid())
+  receiptNo          String   @unique
+  date               String
+  from               String
+  issuedBy           String?
+  amount             Float
+  mode               String
+  billNo             String?
+  chequeNo           String?
+  bank               String?
+  branch             String?
+  chequeDate         String?
+  confirmedByAccounts Boolean @default(false)
+  confirmedByName    String?
+  savedAt            DateTime @default(now())
 }
 
 model Counter {
