@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ISKCON Receipt Generator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Tiro+Devanagari+Hindi&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -243,13 +243,12 @@
   .box.on::after{content:'✓';position:absolute;left:1px;top:-4px;font-size:11px;font-weight:700;}
   .footer{
     display:flex;
-    justify-content:space-between;
-    align-items:flex-end;
+    justify-content:flex-end;
     margin-top:20px;
     padding-top:12px;
     border-top:1px dashed var(--line);
   }
-  .footer .fs{font-size:11.5px;color:#5a5548;}
+  .footer .fs{font-size:11.5px;color:#5a5548;text-align:right;margin-top:4px;}
   .footer .forlogo{
     font-family:'Cormorant Garamond',serif;
     font-weight:700;
@@ -259,8 +258,10 @@
   }
   .mantra{
     text-align:center;
-    font-family:'Tiro Devanagari Hindi',serif;
-    font-size:11.5px;
+    font-family:'Cormorant Garamond',serif;
+    font-style:italic;
+    font-weight:600;
+    font-size:12px;
     color:var(--maroon);
     margin-top:14px;
     letter-spacing:0.3px;
@@ -326,8 +327,8 @@
       <input type="text" id="fromName" placeholder="Type name to add" class="hidden" style="margin-top:8px;">
 
       <label>Issued by (For ISKCON)</label>
-      <input type="text" id="issuedBy" placeholder="Devotee generating this receipt" list="issuedByOptions" autocomplete="off">
-      <datalist id="issuedByOptions"></datalist>
+      <select id="issuedBySelect" onchange="handleIssuedBySelect()"></select>
+      <input type="text" id="issuedBy" placeholder="Type name to add" class="hidden" style="margin-top:8px;">
 
       <label>Amount</label>
       <input type="number" id="amount" placeholder="0" oninput="updateAmountWords()">
@@ -444,10 +445,13 @@
         <div class="field" style="margin-top:12px;" id="pvBranchWrap"><div class="fl">Branch</div><div class="fv" id="pvBranch">&nbsp;</div></div>
 
         <div class="footer">
-          <div class="fs">Yours in the service of Lord Shri Krishna</div>
-          <div class="forlogo">For ISKCON<br><span id="pvIssuedBy" style="font-family:'Inter',sans-serif;font-weight:500;font-size:11.5px;color:#5a5548;">&nbsp;</span></div>
+          <div>
+            <div class="forlogo">For ISKCON</div>
+            <div class="fs">Yours in the service of Lord Shri Krishna</div>
+            <div class="fs" id="pvIssuedBy" style="font-weight:500;color:#5a5548;">&nbsp;</div>
+          </div>
         </div>
-        <div class="mantra">हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे । हरे राम हरे राम राम राम हरे हरे ॥</div>
+        <div class="mantra">Hare Krishna Hare Krishna Krishna Krishna Hare Hare Hare Rama Hare Rama Rama Rama Hare Hare</div>
       </div>
 
       <div class="card history">
@@ -462,6 +466,8 @@
 
 <script>
 const DEBTOR_NAMES = ["(ISKCON CHOWPATTY)", "(MAHANANDA PR.(PERSONNEL", "(PUJA THALI) HAMSARUPA PR", "ADBHUT GOVIND DAS", "ADBHUTA HARI DAS", "ADITYA RAM DAS", "ADVAITA KARUNA DAS", "AKHANDA LILADHAR DAS", "AKSHAR GAUR DAS", "AMIYA RAS DAS", "ANAND GOVIND DAS", "ANAND MOHAN DAS", "ANANTA KRISHNA DAS GOSWAMI", "ANANTA RUPA GAUR DAS", "ANIRUDDHA BHAGAWAN DAS_KALYAN(MMD)", "ANIRUDHA CH. DAS", "B.S.M.S SCHOOL MARATHON A/C", "BHAGAVAT ASHRYA DAS", "BHAKT VISHAL", "BHAKTH LALIT", "BHAKTIVEDANTAINSTITUTE", "BHIMA DAS", "BHISMA DEPARTMENT", "BHIWANDI EXTENSION", "BHUSHAN KRISHNA DAS", "BRAHMA SAMHITA DAS", "BRAJA PREM DAS", "BRAJHARI DAS", "BSMS SCHOOL", "CANCEL RECEIPTS", "CHAITANYA SWAROOP  DAS", "CHAKRAVARTI DAS", "CHATURBHUJ DAS", "DADHI BHAKSHI DAS", "DEVAKINANDAN DAS", "DHANVANTARI DAS", "DURGA PRASAD (JIVADAYA KRISHNA GAON)", "GAUR VANI TRUST", "GAURANGA NIDHI DAS", "GHANSHYAM PR. PUJARI", "GOKUL RANJAN DAS", "GOKULESHWAR DAS", "GOPA BANDHU DAS", "GOVIND KUMAR DAS", "GUNA DAYAMAYA DAS", "GURU GAUR KRISHNA DAS", "H.G. SARVABEEJ DAS/RISHABHDEV DAS", "H.H. BHAKTI B.B.MAHARAJ", "HALDHAR KRIPA DAS", "HAMSA RUPA JIVAN DAS", "HARA DAS", "HARESA CHANDRA DAS", "HARISA NARADA DAS", "HEMAGIRI DAS", "I.B.D SALE", "IPP (PRADHANGOPA DAS)", "ISKCON BURLA (ODISHA)_VISHNUTATTVA DAS", "ISKCON COMMUNICATION", "ISKCON KHARGAR", "ISKCON RATHYATRA A/C", "ISKCON TALASARI", "JAGDISH MOHAN DAS", "JALATALA DEVI DASI", "JANUDEEP NITAI DAS", "JAYSHREE DEVI DASI", "KAMAL NARAYAN DAS", "KRISHNA BHAJAN DAS", "KRISHNA CHAITANYA DAS", "KRISHNA CHARAN DAS", "KRISHNA KANHAIYA DAS", "KRISHNAMAYI DEVI DASI", "KURMA KRIPA DAS", "LALITA KANTI DEVI DAS", "LAMBHITA PREM DAS", "LAXMI NARAYAN DAS", "M. CENTERAL BOOK STALL(SHYAMANAND SHRAN)", "MADHAVA DAS  ITV", "MADHU MANGAL DAS+", "MAHAPRABHU RAM DAS", "MANGAL NILA DAS", "MITHILA PATI DAS", "MUKUND MADHAV DAS", "MURARI SHYAM DAS", "NALINIKANTA DAS (ANDHERI-STALL)", "NARHARI  DAS", "NEW BHAKTA DEVOTEES", "NILA KISHOR DAS", "NIMAI NITAI DAS", "NITAI HARI DAS", "NITAI PADAKAMAL DAS", "PADMAKSHAYA DAS", "PANCHARATNA DAS", "PANDUSUTA DAS", "PANKAJ NABHA DAS", "PARIKSHIT DRIVER", "PAVANPUTRA DAS", "PUNDARIK GOVIND DAS", "PURUSH BHUSHAN DAS", "PURUSHOTTAM HARI DAS", "RADHA KRISHNA DAS", "RADHA RASABIHARI DAS", "RADHA RASBIHARI PREM DAS(SCD)", "RADHAKRISHNA DAS  IYF", "RADHAVRAJRAJ DAS", "RADHIKA KANHAYA DAS", "RAGANUGA HARI DAS", "RAGHUPATI VISHNU DAS", "RAJASUYA DAS", "RAM JIVAN DAS", "RAMA RUPA DAS", "RAMGHAT DAS", "RASABANDHU DAS", "REVATI RAMAN DAS", "RISABHA KARUNA DAS", "RUPA VILAS DAS", "SACHIPUTRA DAS", "SADHU CHARAN DAS", "SANDIPANI KRISHNA DAS", "SANJAY PRABHU (GOVINDA RESTAURANT)", "SARVADEV DAS", "SATYAVRATA MAHARAJA DAS", "SHIRDI BOOK STALL", "SIDDHILALSA DEVI DASI", "SITARAM DAS", "SRI KRISHNA G. DAS", "SRINIKETAN GOVIND DAS", "SUJAY K.DAS", "SUKISHOR SUDAMA DAS", "SULOCHAN DAS", "SUNDAR CHAITANYA DAS", "SUNDAR RASBIHARI DAS", "SURA  DAS", "TAMAL KRISHNA DAS", "TEMPLE", "TRIDHAM DAS", "TULA DAAN (HARISA NARADA  DAS)", "UDHAV MADHAV DAS", "UJJVAL NILAMANI DAS", "UMESH BISHIT", "VALSAD CHOICE", "VARAHARUPA DEVI DASI", "VASUMAN DAS", "VELPULA SAI KRISHNA", "VIDYAVATI DEVI DASI", "VISHNU TATTA DAS", "VRAJA SUNDARI D. DASI", "VRAJAPRIYA SUNDARI  DEVI DASI", "VRAJASAKHI MATAJI (SRMI)", "YUGAL PREM DAS"];
+
+const ISSUER_NAMES = ["Hamsa Rupa Jivan Das", "Akhanda Liladhar Das"];
 
 let currentMode = 'Cash';
 
@@ -645,10 +651,23 @@ async function loadHistory(){
   }
 }
 
+let sessionFromNames = [];
+let sessionIssuerNames = [];
+
 function populateFromNameDropdown(historyNames){
   const sel = document.getElementById('fromNameSelect');
   const current = sel.value;
-  const merged = [...new Set([...DEBTOR_NAMES, ...historyNames])].sort((a,b)=>a.localeCompare(b));
+  const merged = [...new Set([...DEBTOR_NAMES, ...historyNames, ...sessionFromNames])].sort((a,b)=>a.localeCompare(b));
+  sel.innerHTML = '<option value="">— Select name —</option>' +
+    merged.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('') +
+    '<option value="__add_new__">+ Add new name…</option>';
+  if(current && merged.includes(current)) sel.value = current;
+}
+
+function populateIssuedByDropdown(historyNames){
+  const sel = document.getElementById('issuedBySelect');
+  const current = sel.value;
+  const merged = [...new Set([...ISSUER_NAMES, ...historyNames, ...sessionIssuerNames])].sort((a,b)=>a.localeCompare(b));
   sel.innerHTML = '<option value="">— Select name —</option>' +
     merged.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('') +
     '<option value="__add_new__">+ Add new name…</option>';
@@ -669,9 +688,62 @@ function handleFromSelect(){
   renderPreview();
 }
 
+function handleIssuedBySelect(){
+  const sel = document.getElementById('issuedBySelect');
+  const textInput = document.getElementById('issuedBy');
+  if(sel.value === '__add_new__'){
+    textInput.classList.remove('hidden');
+    textInput.value = '';
+    textInput.focus();
+  } else {
+    textInput.classList.add('hidden');
+    textInput.value = sel.value;
+  }
+  renderPreview();
+}
+
+function commitNewFromName(){
+  const textInput = document.getElementById('fromName');
+  const name = textInput.value.trim();
+  if(name && !sessionFromNames.includes(name)){
+    sessionFromNames.push(name);
+    populateFromNameDropdown([]);
+    document.getElementById('fromNameSelect').value = name;
+  }
+}
+
+function commitNewIssuedBy(){
+  const textInput = document.getElementById('issuedBy');
+  const name = textInput.value.trim();
+  if(name && !sessionIssuerNames.includes(name)){
+    sessionIssuerNames.push(name);
+    populateIssuedByDropdown([]);
+    document.getElementById('issuedBySelect').value = name;
+  }
+}
+
 function setFromName(name){
   const sel = document.getElementById('fromNameSelect');
   const textInput = document.getElementById('fromName');
+  const options = Array.from(sel.options).map(o=>o.value);
+  if(name && options.includes(name)){
+    sel.value = name;
+    textInput.classList.add('hidden');
+    textInput.value = name;
+  } else if(name){
+    sel.value = '__add_new__';
+    textInput.classList.remove('hidden');
+    textInput.value = name;
+  } else {
+    sel.value = '';
+    textInput.classList.add('hidden');
+    textInput.value = '';
+  }
+}
+
+function setIssuedBy(name){
+  const sel = document.getElementById('issuedBySelect');
+  const textInput = document.getElementById('issuedBy');
   const options = Array.from(sel.options).map(o=>o.value);
   if(name && options.includes(name)){
     sel.value = name;
@@ -697,9 +769,9 @@ function toggleConfirmName(){
 
 function populateNameSuggestions(items){
   const fromNames = [...new Set(items.map(it=>it.from).filter(Boolean))];
-  const issuerNames = [...new Set(items.map(it=>it.issuedBy).filter(Boolean))].sort();
+  const issuerNames = [...new Set(items.map(it=>it.issuedBy).filter(Boolean))];
   populateFromNameDropdown(fromNames);
-  document.getElementById('issuedByOptions').innerHTML = issuerNames.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join('');
+  populateIssuedByDropdown(issuerNames);
 }
 
 function loadReceipt(jsonStr){
@@ -707,7 +779,7 @@ function loadReceipt(jsonStr){
   document.getElementById('receiptNo').value = it.receiptNo||'';
   document.getElementById('rDate').value = it.date||'';
   setFromName(it.from||'');
-  document.getElementById('issuedBy').value = it.issuedBy||'';
+  setIssuedBy(it.issuedBy||'');
   document.getElementById('amount').value = it.amount||'';
   document.getElementById('billNo').value = it.billNo||'';
   document.getElementById('chequeNo').value = it.chequeNo||'';
@@ -723,8 +795,9 @@ function loadReceipt(jsonStr){
 }
 
 function resetForm(){
-  ['receiptNo','issuedBy','amount','billNo','chequeNo','bankName','branch','confirmedByName'].forEach(id=>document.getElementById(id).value='');
+  ['receiptNo','amount','billNo','chequeNo','bankName','branch','confirmedByName'].forEach(id=>document.getElementById(id).value='');
   setFromName('');
+  setIssuedBy('');
   document.getElementById('rDate').value='';
   document.getElementById('chequeDate').value='';
   document.getElementById('confirmedByAccounts').checked = false;
@@ -804,7 +877,10 @@ document.getElementById('rDate').value = new Date().toISOString().slice(0,10);
 document.querySelectorAll('#receiptNo, #fromName, #issuedBy, #billNo, #chequeNo, #bankName, #branch, #rDate, #chequeDate').forEach(el=>{
   el.addEventListener('input', renderPreview);
 });
+document.getElementById('fromName').addEventListener('blur', commitNewFromName);
+document.getElementById('issuedBy').addEventListener('blur', commitNewIssuedBy);
 populateFromNameDropdown([]);
+populateIssuedByDropdown([]);
 renderPreview();
 loadNextNumber();
 loadHistory();
