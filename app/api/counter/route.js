@@ -4,26 +4,36 @@ export const dynamic = 'force-dynamic';
 
 const prisma = new PrismaClient();
 
-export async function GET() {
+function currentFY() {
+  const now = new Date();
+  const month = now.getMonth() + 1; // 1-12
+  const year = now.getFullYear();
+  return month >= 4 ? year : year - 1;
+}
+
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const fy = searchParams.get('fy') || String(currentFY());
+
   const counter = await prisma.counter.upsert({
-    where: { id: 'singleton' },
+    where: { id: fy },
     update: {},
-    create: { id: 'singleton' }
+    create: { id: fy, next: 1 }
   });
-  return Response.json({ next: counter.next });
+  return Response.json({ fy, next: counter.next });
 }
 
 export async function PUT(req) {
-  const { next } = await req.json();
+  const { fy, next } = await req.json();
 
-  if (typeof next !== 'number') {
-    return Response.json({ message: 'next must be a number' }, { status: 400 });
+  if (!fy || typeof next !== 'number') {
+    return Response.json({ message: 'fy (string) and next (number) are required' }, { status: 400 });
   }
 
   const counter = await prisma.counter.upsert({
-    where: { id: 'singleton' },
+    where: { id: String(fy) },
     update: { next },
-    create: { id: 'singleton', next }
+    create: { id: String(fy), next }
   });
   return Response.json(counter);
 }

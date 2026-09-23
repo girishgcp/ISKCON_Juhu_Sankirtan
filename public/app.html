@@ -318,7 +318,7 @@
 
       <label>Receipt no.</label>
       <div class="row2">
-        <input type="text" id="receiptNo" placeholder="e.g. 43480">
+        <input type="text" id="receiptNo" placeholder="e.g. 1-2026">
         <button type="button" class="secondary" onclick="loadNextNumber()" style="padding:9px;">Next in sequence</button>
       </div>
 
@@ -366,6 +366,10 @@
         </div>
       </div>
 
+      <div class="actions" style="margin-top:16px;">
+        <button class="secondary" onclick="saveReceipt()">Save</button>
+      </div>
+
       <label>Copy style</label>
       <div class="copystyle">
         <div class="swatch active" data-copy="Customer Copy" data-color="#F3DCE3" onclick="setCopyType(this)">Customer</div>
@@ -373,7 +377,16 @@
         <div class="swatch" data-copy="Book Copy" data-color="#E7E2D8" onclick="setCopyType(this)">Book</div>
       </div>
 
-      <div class="card" style="margin-top:16px;padding:14px 16px;background:#FAF7EF;">
+      <div id="accountsLockedPrompt" class="card" style="margin-top:16px;padding:14px 16px;background:#FAF7EF;">
+        <label style="margin:0 0 8px;">Accounts confirmation <span style="text-transform:none;font-weight:400;color:#a19787;">(Accounts team only)</span></label>
+        <div class="row2">
+          <input type="password" id="accountsPinInput" placeholder="Accounts PIN" autocomplete="off">
+          <button type="button" class="secondary" onclick="accountsLogin()" style="padding:9px;">Unlock</button>
+        </div>
+        <div class="status" id="accountsLoginStatus"></div>
+      </div>
+
+      <div id="accountsConfirmSection" class="card hidden" style="margin-top:16px;padding:14px 16px;background:#FAF7EF;">
         <label style="margin:0 0 8px;">Accounts confirmation <span style="text-transform:none;font-weight:400;color:#a19787;">(internal only — never printed)</span></label>
         <div class="opt" style="display:flex;align-items:center;gap:8px;">
           <input type="checkbox" id="confirmedByAccounts" onchange="toggleConfirmName()" style="width:auto;">
@@ -386,7 +399,6 @@
         <button class="primary" onclick="downloadPDF()">Download PDF</button>
         <button class="secondary" onclick="printAllCopies()">Print all 3 copies (1 A4 sheet)</button>
         <button class="secondary" onclick="downloadImage()">Download image (for WhatsApp)</button>
-        <button class="secondary" onclick="saveReceipt()">Save to history</button>
         <button class="ghost" onclick="resetForm()">Clear form</button>
       </div>
       <div class="status" id="statusMsg"></div>
@@ -583,20 +595,34 @@ function collectData(){
 
 // ---------- Prisma-backed API storage ----------
 // Expects two serverless endpoints on the same domain:
-//   GET  /api/counter        -> { next: number }
-//   PUT  /api/counter        -> body { next }               -> updates counter
-//   GET  /api/receipts       -> [ { receiptNo, date, from, issuedBy, amount, mode, billNo, chequeNo, bank, branch, chequeDate, confirmedByAccounts, confirmedByName, savedAt }, ... ]
-//   POST /api/receipts       -> body = one receipt object    -> creates it
+//   GET  /api/counter?fy=YYYY  -> { fy, next: number }
+//   PUT  /api/counter          -> body { fy, next }            -> updates counter for that fiscal year
+//   GET  /api/receipts         -> [ { receiptNo, date, from, issuedBy, amount, mode, billNo, chequeNo, bank, branch, chequeDate, confirmedByAccounts, confirmedByName, savedAt }, ... ]
+//   POST /api/receipts         -> body = one receipt object    -> creates it
+//
+// receiptNo format: "<sequence>-<FYyear>", e.g. "1-2026" for the 1st receipt of FY Apr 2026–Mar 2027.
+
+function fyForDate(dateStr){
+  const d = dateStr ? new Date(dateStr+'T00:00:00') : new Date();
+  const month = d.getMonth()+1;
+  const year = d.getFullYear();
+  return month >= 4 ? year : year - 1;
+}
+
+function currentFormDate(){
+  return document.getElementById('rDate').value || new Date().toISOString().slice(0,10);
+}
 
 async function loadNextNumber(){
+  const fy = fyForDate(currentFormDate());
   try{
-    const res = await fetch('/api/counter');
+    const res = await fetch('/api/counter?fy='+fy);
     if(!res.ok) throw new Error('HTTP '+res.status);
     const data = await res.json();
-    document.getElementById('receiptNo').value = data.next || 43480;
+    document.getElementById('receiptNo').value = (data.next || 1) + '-' + fy;
   }catch(e){
     setStatus('Could not fetch next number: '+e.message);
-    document.getElementById('receiptNo').value = 43480;
+    document.getElementById('receiptNo').value = '1-'+fy;
   }
   renderPreview();
 }
@@ -615,12 +641,18 @@ async function saveReceipt(){
       const err = await res.json().catch(()=>({}));
       throw new Error(err.message || ('HTTP '+res.status));
     }
-    const nextNo = (parseInt(data.receiptNo)||0) + 1;
-    await fetch('/api/counter', {
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({next: nextNo})
-    });
+
+    const match = String(data.receiptNo).match(/^(\d+)-(\d{4})$/);
+    if(match){
+      const seq = parseInt(match[1], 10);
+      const fy = match[2];
+      await fetch('/api/counter', {
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({fy, next: seq+1})
+      });
+    }
+
     setStatus('Saved receipt #'+data.receiptNo+'.');
     await loadHistory();
   }catch(e){
@@ -770,6 +802,40 @@ function toggleConfirmName(){
   if(!checked) nameInput.value = '';
 }
 
+async function checkAccountsAuth(){
+  try{
+    const res = await fetch('/api/auth-accounts');
+    const data = await res.json();
+    document.getElementById('accountsLockedPrompt').classList.toggle('hidden', !!data.authenticated);
+    document.getElementById('accountsConfirmSection').classList.toggle('hidden', !data.authenticated);
+  }catch(e){
+    // stay locked on error
+  }
+}
+
+async function accountsLogin(){
+  const pin = document.getElementById('accountsPinInput').value.trim();
+  const statusEl = document.getElementById('accountsLoginStatus');
+  if(!pin){ statusEl.textContent = 'Enter the Accounts PIN.'; return; }
+  try{
+    const res = await fetch('/api/auth-accounts', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ pin })
+    });
+    const data = await res.json();
+    if(data.ok){
+      statusEl.textContent = '';
+      document.getElementById('accountsPinInput').value = '';
+      await checkAccountsAuth();
+    } else {
+      statusEl.textContent = data.message || 'Incorrect PIN.';
+    }
+  }catch(e){
+    statusEl.textContent = 'Something went wrong. Try again.';
+  }
+}
+
 function populateNameSuggestions(items){
   const fromNames = [...new Set(items.map(it=>it.from).filter(Boolean))];
   const issuerNames = [...new Set(items.map(it=>it.issuedBy).filter(Boolean))];
@@ -882,11 +948,15 @@ document.querySelectorAll('#receiptNo, #fromName, #issuedBy, #billNo, #chequeNo,
 });
 document.getElementById('fromName').addEventListener('blur', commitNewFromName);
 document.getElementById('issuedBy').addEventListener('blur', commitNewIssuedBy);
+document.getElementById('accountsPinInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter') accountsLogin();
+});
 populateFromNameDropdown([]);
 populateIssuedByDropdown([]);
 renderPreview();
 loadNextNumber();
 loadHistory();
+checkAccountsAuth();
 </script>
 </body>
 </html>
